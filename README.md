@@ -1,2 +1,2 @@
 # MultiThreadChat
-This Program is a simple chat using threads. Open a terminal and type python server.py in the server.py's directory. Then open a new terminal and type python client.py to launch the client. 
+This Program is a simple chat using threads. Open a terminal and type python server.py in the server.py's directory. Then open a new terminal and type python GUI.py to launch the client. There's no point in having just one client so you'll need to open another terminal and type python GUI.py as before to start the chat. The program currently will only work locally but could easily be uploaded to run on a server e.g. pythonanywhere.
