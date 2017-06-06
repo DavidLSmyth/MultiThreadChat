@@ -10,49 +10,48 @@ running=True
 class Server():
     def __init__(self):
         #self.running=True?
-        self.CONNECTION_LIST = []
+        #connectionList holds a list of users that have connected
+        self.connectionList = []
         self.PORT =8080
         self.s = socket.socket()
         self.s.bind(("localhost", self.PORT))
+        #at most 5 people can join the chat
         self.s.listen(5)
-        self.threadnames=['t1','t2','t3','t4','t5','t6','t7']
         self.threadlist=[]        
         self.availableThread=len(self.threadlist)        
         print("server started")
-        t1=threading.Thread(target=self.handleConnections).start()
-        self.threadlist.append(t1)
-       #_thread.start_new_thread(self.handleConnections,(self,))        
+        self.threadlist.append(threading.Thread(target=self.handleNewConnections).start())
+       #_thread.start_new_thread(self.handleNewConnections,(self,))        
         ###get server(admin) input to help kick a player out, etc.
         
     
-    def handleConnections(self):
+    def handleNewConnections(self):
+        '''Waits for an incoming connection and then deals with connecting the user'''
         global running
         print('in handConnections',running)
         while running:
             print("waiting for a connection")
             c,addr=self.s.accept()
-            print(type(c))
-            print("connected at: ",addr)
             userName=c.recv(1024).decode('UTF-8')
-            print(userName)
+            print(userName,"connected at: ",addr)
             user=self.User(c, addr,userName)
-            user.send(("Successfully Connected").encode('utf-8'))
+            #user.send(("Successfully Connected").encode('utf-8'))
             #_thread.start_new_thread(self.connectionHandler,(user,))
-            self.CONNECTION_LIST.append(user)
-            print(self.CONNECTION_LIST)
-            print('all is going well')            
-            #self.CONNECTION_LIST.append(user)
-            ###
+            self.connectionList.append(user)
+            print(self.connectionList)      
+            #Let eveyone know that the user has connected
             self.sendALL(user.getName()+" has connected")
+            #deal with the current connection
             threading.Thread(target=self.connectionHandler,args=(user,)).start()
-            print('in between')
-            t1=threading.Thread(target=self.handleConnections).start()
-            print('home run')
+            #wait for a new connection
+            threading.Thread(target=self.handleNewConnections).start()
             
     def sendALL(self,message):
+        '''Sends a message to all other users from the current user'''
         print('sending',message)
-        for user in self.CONNECTION_LIST:
+        for user in self.connectionList:
             user.send(self.cleanStr((time.ctime()[12:19]+' '+message)).encode('utf-8'))
+            
     def cleanStr(self,string):
         return string.replace("\n","")
         
@@ -65,49 +64,45 @@ class Server():
         return msg
     def sendAll(self,username,message):
         print('sending',message)
-        for user in self.CONNECTION_LIST:
+        for user in self.connectionList:
             print('user',user)
             user.send(self.formatMessage(message,username).encode('utf-8'))
             
     def connectionHandler(self,user):
-        print('connectionHandler')
+        '''Given a user, waits for them to input a message and then sends it to other users'''
         global running
-        print(threading.active_count())
+        print('There are currently',threading.active_count(),'users active')
         while running:
             try:
-                print('waiting on input')
+                print('waiting on input from user: ',user)
                 inputStr=user.conn.recv(4096).decode('UTF-8')
-                print("inputstr",inputStr,type(inputStr))
-                #user.setLastPost()
-                
                 if inputStr[0:8]==("setName"):
                     if(len(inputStr[8:])>0):
                         oldname=user.getName()
                         self.sendALL(oldname, "changed their username to ", inputStr[8:])
                     else:
-                        user.conn.send(("Invalid name").encode('utf-8'))
+                        user.conn.send(("You tried to set your name to an invalid name").encode('utf-8'))
                 elif inputStr=="list":
-                    user.conn.send(("Users connected: ",self.CONNECTION_LIST.values()).encode('utf-8'))
+                    user.conn.send(("Users connected: ",self.connectionList.values()).encode('utf-8'))
                 elif inputStr=='quit':
                     user.conn.send(("Bye").encode('utf-8'))
-                    user.conn.send("_")
                     user.conn.close()
-                    self.sendALL(self.CONNECTION_LIST[user],"has disconnected")
-                    self.CONNECTION_LIST.remove(user)
+                    self.sendALL(self.connectionList[user],"has disconnected")
+                    self.connectionList.remove(user)
                     #kills thread                    
                     return None
-                elif inputStr=='':
-                    if user in self.CONNECTION_LIST.keys():
-                            self.sendALL(self.CONNECTION_LIST[user],"has disconnected")
-                            self.CONNECTION_LIST.remove(user)
+#                elif inputStr=='':
+#                    if user in self.connectionList.keys():
+#                            self.sendALL(self.connectionList[user],"has disconnected")
+#                            self.connectionList.remove(user)
                 else:
                     self.sendAll(user,inputStr)
                     print('all good')
             except:
-                if user in self.CONNECTION_LIST:
+                if user in self.connectionList:
                     user.conn.close()
                     self.sendALL("User " + user.getName() + " disconnected.")
-                    self.CONNECTION_LIST.remove(user)
+                    self.connectionList.remove(user)
                 return None
         
         
