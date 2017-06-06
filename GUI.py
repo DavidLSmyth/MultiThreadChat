@@ -35,9 +35,7 @@ class ClientUI:
         ###socket stuff
         
         self.running=True
-        
-        
-        
+        self.quitWhenReceive=False
         print("running")
         ##create client##
         #self.client=Client()
@@ -73,17 +71,20 @@ class ClientUI:
         self.s.connect((self.host,self.port))
         self.username=username
         self.s.send((self.username).encode('UTF-8'))
+        #wait for input
         self.thread=Thread(target=self.receive)
         self.thread.start()        
         print('connected')        
-        
         self.root.mainloop()
+        
     def sendEnter(self,event):
         self.sendClick()
     
     def sendClick(self):
         print("displaying message")        
         message=self.messagebox.get("1.0",END)
+        if message.replace('\n','')=='quit':
+            self.quitWhenReceive=True
         self.messagebox.delete("1.0",END)
         self.sendmessage(message.replace("\n",""))
         #self.displayIncomingMessage(message)
@@ -91,20 +92,12 @@ class ClientUI:
         return message
     
     def displayIncomingMessage(self,message):
-        if message=='quit':
-            self.close()
-        else:
-            print("displaying incoming message")
-            self.mainText.config(state=NORMAL)
-            self.mainText.insert(END,'\n'+message)
-            self.mainText.config(state=DISABLED)
+        print("displaying incoming message")
+        self.mainText.config(state=NORMAL)
+        self.mainText.insert(END,'\n'+message)
+        self.mainText.config(state=DISABLED)
         
         #format the message in client or here?
-        '''        
-    def formatMessage(self,message):
-        time=time.localtime
-        print(time)
-        ''' 
     #####socket methods#####
     def sendmessage(self,message):
         self.s.send(message.encode('utf-8'))
@@ -115,9 +108,15 @@ class ClientUI:
             data=self.s.recv(1024).decode('UTF-8')
             if len(data)>0:
                 break
+        #if data contains quit or something similar:
+        #else:
         self.displayIncomingMessage(str(data))
-        self.thread=Thread(target=self.receive)
-        self.thread.start()
+        if self.quitWhenReceive:
+            time.sleep(2)
+            self.close()
+        else:
+            self.thread=Thread(target=self.receive)
+            self.thread.start()
         
     def close(self):
         self.s.send("EXIT".encode('utf-8'))
@@ -140,10 +139,12 @@ class Setup:
     
     def sendEnter(self,event):
         self.begin()
+        
     def begin(self):
         name=self.userNameBox.get("1.0",END)
         self.root.destroy()
         ClientUI(name)
+        
     def close(self):
         self.root.destroy()
 '''
